@@ -117,3 +117,41 @@ def apply_prophet(df, date_col, value_col, title=""):
     mse = mean_squared_error(df_prophet['y'], forecast['yhat'])
     mae = mean_absolute_error(df_prophet['y'], forecast['yhat'])
     print(f"{title} - Prophet MSE: {mse:.2f}, MAE: {mae:.2f}")
+
+# Función para comparar modelos SARIMA y Prophet
+def compare_models(df, date_col, value_col, sarima_order, sarima_seasonal_order, title):
+    df_copy = df.copy()
+
+    # Si la columna de fecha no existe pero es el índice, resetear índice
+    if date_col not in df_copy.columns and df_copy.index.name == date_col:
+        df_copy.reset_index(inplace=True)
+
+    # --- SARIMA ---
+    df_sarima = df_copy.set_index(date_col)
+    sarima_model = SARIMAX(df_sarima[value_col], order=sarima_order, seasonal_order=sarima_seasonal_order)
+    sarima_results = sarima_model.fit(disp=False)
+    sarima_forecast = sarima_results.predict(start=0, end=len(df_sarima)-1, dynamic=False)
+
+    sarima_mse = mean_squared_error(df_sarima[value_col], sarima_forecast)
+    sarima_mae = mean_absolute_error(df_sarima[value_col], sarima_forecast)
+
+    # --- Prophet ---
+    df_prophet = df_copy[[date_col, value_col]].rename(columns={date_col: "ds", value_col: "y"})
+    prophet_model = Prophet()
+    prophet_model.fit(df_prophet)
+    future = prophet_model.make_future_dataframe(periods=0)
+    forecast = prophet_model.predict(future)
+
+    prophet_mse = mean_squared_error(df_prophet['y'], forecast['yhat'])
+    prophet_mae = mean_absolute_error(df_prophet['y'], forecast['yhat'])
+
+    best_model = "SARIMA" if sarima_mae < prophet_mae else "Prophet"
+
+    return {
+        "Dataset": title,
+        "SARIMA_MSE": round(sarima_mse, 2),
+        "SARIMA_MAE": round(sarima_mae, 2),
+        "Prophet_MSE": round(prophet_mse, 2),
+        "Prophet_MAE": round(prophet_mae, 2),
+        "Best_Model": best_model
+    }
