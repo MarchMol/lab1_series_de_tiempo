@@ -1,0 +1,69 @@
+from scipy.stats import norm
+from statsmodels.tsa.seasonal import seasonal_decompose
+from matplotlib import pyplot as plt
+import numpy as np
+import pandas as pd
+from statsmodels.graphics.tsaplots import plot_acf, acf
+
+# Graficas de analisis exploratorio
+def analysis_graphs(df, value, title):
+    print("Description")
+    print(df.describe())
+    
+    print("Frequency distribution")
+    plt.figure(figsize=(3, 3))
+    plt.title(f"Frequency Distribution - {title}")
+    _, bins, _ = plt.hist(df[value], bins=30, density=False)
+    mu, sigma = np.mean(df[value]), np.std(df[value])
+    x = np.linspace(min(bins), max(bins), 1000) 
+    bin_width = bins[1] - bins[0]
+    scale = len(df) * bin_width
+    y = norm.pdf(x, mu, sigma) * scale
+    plt.plot(x, y, label=f'Ideal Gaussian', color='r')
+    plt.xlabel(value)
+    plt.ylabel("Frequency")
+    plt.tight_layout()
+    plt.show()
+    
+    print("Time Series")
+    df_median = df[value].median()
+    plt.figure(figsize=(10, 5))
+    plt.plot(df[value], '-o')
+    plt.axhline(df_median, linestyle= '--', color='r', label=f"Mediana {df_median}")
+    plt.title(f"Time Series - {title}")
+    plt.xlabel("DATE")
+    plt.ylabel(value)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    
+    print("Seasonal Decompose")
+    result = seasonal_decompose(df[value], model='additive', period=7)
+    result.plot()
+    
+    
+# Graficas de Promedio Movil
+def moving_average(df, value, title, recomended):
+    print("ACF plot")
+    plot_acf(df, lags=50)
+    plt.show()
+    
+    print("Finding Best Period")
+    acf_values = acf(df, nlags=50)
+    acf_values = acf_values[1:]
+    max_idx = np.argmax(acf_values)
+    print(f"Best Lag is {max_idx} with weight of {acf_values.max()}")  # Output: [0.523, 2]
+
+    print("Moving Average Graph")
+    best_ma = df.rolling(window=max_idx).mean()
+    recomended_ma = df.rolling(window=recomended).mean()
+    plt.figure(figsize=(10, 5))
+    plt.title(f"Moving Average - {title}")
+    plt.plot(df, color='lightblue')
+    plt.plot(best_ma, label=f"Best Period (ACF) - {max_idx}")
+    plt.plot(recomended_ma, label=f"Recommedned Period - {recomended}")
+    plt.ylabel(value)
+    plt.xlabel("Date")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
