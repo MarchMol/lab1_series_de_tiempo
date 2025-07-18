@@ -118,7 +118,7 @@ def apply_prophet(df, date_col, value_col, title=""):
     mae = mean_absolute_error(df_prophet['y'], forecast['yhat'])
     print(f"{title} - Prophet MSE: {mse:.2f}, MAE: {mae:.2f}")
 
-# Función para comparar modelos SARIMA y Prophet
+# Función para comparar modelos SARIMA y Prophet usando RMSE y MAE
 def compare_models(df, date_col, value_col, sarima_order, sarima_seasonal_order, title):
     df_copy = df.copy()
 
@@ -133,6 +133,7 @@ def compare_models(df, date_col, value_col, sarima_order, sarima_seasonal_order,
     sarima_forecast = sarima_results.predict(start=0, end=len(df_sarima)-1, dynamic=False)
 
     sarima_mse = mean_squared_error(df_sarima[value_col], sarima_forecast)
+    sarima_rmse = sarima_mse ** 0.5
     sarima_mae = mean_absolute_error(df_sarima[value_col], sarima_forecast)
 
     # --- Prophet ---
@@ -143,15 +144,16 @@ def compare_models(df, date_col, value_col, sarima_order, sarima_seasonal_order,
     forecast = prophet_model.predict(future)
 
     prophet_mse = mean_squared_error(df_prophet['y'], forecast['yhat'])
+    prophet_rmse = prophet_mse ** 0.5
     prophet_mae = mean_absolute_error(df_prophet['y'], forecast['yhat'])
 
     best_model = "SARIMA" if sarima_mae < prophet_mae else "Prophet"
 
     return {
         "Dataset": title,
-        "SARIMA_MSE": round(sarima_mse, 2),
+        "SARIMA_RMSE": round(sarima_rmse, 2),
         "SARIMA_MAE": round(sarima_mae, 2),
-        "Prophet_MSE": round(prophet_mse, 2),
+        "Prophet_RMSE": round(prophet_rmse, 2),
         "Prophet_MAE": round(prophet_mae, 2),
         "Best_Model": best_model
     }
