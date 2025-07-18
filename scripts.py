@@ -6,6 +6,7 @@ import pandas as pd
 from statsmodels.graphics.tsaplots import plot_acf, acf
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from prophet import Prophet
 
 # Graficas de analisis exploratorio
 def analysis_graphs(df, value, title):
@@ -94,3 +95,25 @@ def sarima_model(df, date_col, value_col, order=(1,1,1), seasonal_order=(1,1,1,1
     plt.legend()
     plt.show()
     print(f"Model Summary:\n{results.summary()}")
+
+# Función para aplicar Prophet
+def apply_prophet(df, date_col, value_col, title=""):
+    # Renombrar columnas como lo espera Prophet
+    df_prophet = df.reset_index()[[date_col, value_col]].rename(columns={date_col: "ds", value_col: "y"})
+    
+    model = Prophet()
+    model.fit(df_prophet)
+    
+    # Crear dataframe futuro
+    future = model.make_future_dataframe(periods=0)
+    forecast = model.predict(future)
+    
+    # Graficar
+    fig1 = model.plot(forecast)
+    plt.title(f"Prophet Forecast - {title}")
+    plt.show()
+    
+    # Métricas
+    mse = mean_squared_error(df_prophet['y'], forecast['yhat'])
+    mae = mean_absolute_error(df_prophet['y'], forecast['yhat'])
+    print(f"{title} - Prophet MSE: {mse:.2f}, MAE: {mae:.2f}")
