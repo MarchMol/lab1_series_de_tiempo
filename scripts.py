@@ -4,6 +4,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 from statsmodels.graphics.tsaplots import plot_acf, acf
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # Graficas de analisis exploratorio
 def analysis_graphs(df, value, title):
@@ -67,3 +69,28 @@ def moving_average(df, value, title, recomended):
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+# Model SARIMA
+def sarima_model(df, date_col, value_col, order=(1,1,1), seasonal_order=(1,1,1,12), title=""):
+    # Asegurar que el índice tenga nombre
+    if df.index.name is None:
+        df.reset_index(inplace=True)
+
+    # Verificar si la columna de fecha ya es índice
+    if df.index.name != date_col:
+        if date_col in df.columns:
+            df.set_index(date_col, inplace=True)
+        else:
+            raise KeyError(f"'{date_col}' no está en las columnas ni es índice.")
+    
+    model = SARIMAX(df[value_col], order=order, seasonal_order=seasonal_order)
+    results = model.fit(disp=False)
+    df['forecast'] = results.predict(start=0, end=len(df)-1, dynamic=False)
+    
+    plt.figure(figsize=(10,5))
+    plt.plot(df[value_col], label='Original')
+    plt.plot(df['forecast'], color='red', label='SARIMA Forecast')
+    plt.title(f"SARIMA Model - {title}")
+    plt.legend()
+    plt.show()
+    print(f"Model Summary:\n{results.summary()}")
