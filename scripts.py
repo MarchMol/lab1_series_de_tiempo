@@ -232,42 +232,39 @@ def apply_prophet(df, date_col, value_col, title=""):
     plt.show()
     print(f"{title} - Prophet RMSE: {rmse:.2f}, MAE: {mae:.2f}")
 
-# Función para comparar modelos SARIMA y Prophet usando RMSE y MAE
-def compare_models(df, date_col, value_col, sarima_order, sarima_seasonal_order, title):
-    df_copy = df.copy()
+# Función para comparar modelos usando RMSE y MAE
+def plot_model_comparison(metrics_dict, title="Comparación de Modelos"):
+    # Preparar los datos
+    model_names = list(metrics_dict.keys())
+    rmse_values = [metrics_dict[model]["RMSE"] for model in model_names]
+    mae_values = [metrics_dict[model]["MAE"] for model in model_names]
 
-    # Si la columna de fecha no existe pero es el índice, resetear índice
-    if date_col not in df_copy.columns and df_copy.index.name == date_col:
-        df_copy.reset_index(inplace=True)
+    # Crear la figura
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    # --- SARIMA ---
-    df_sarima = df_copy.set_index(date_col)
-    sarima_model = SARIMAX(df_sarima[value_col], order=sarima_order, seasonal_order=sarima_seasonal_order)
-    sarima_results = sarima_model.fit(disp=False)
-    sarima_forecast = sarima_results.predict(start=0, end=len(df_sarima)-1, dynamic=False)
+    # Posiciones de las métricas en el eje X
+    metric_labels = ["RMSE", "MAE"]
+    x = range(len(metric_labels))
+    width = 0.15  # ancho de las barras
 
-    sarima_mse = mean_squared_error(df_sarima[value_col], sarima_forecast)
-    sarima_rmse = sarima_mse ** 0.5
-    sarima_mae = mean_absolute_error(df_sarima[value_col], sarima_forecast)
+    # Dibujar barras para cada modelo
+    for idx, model in enumerate(model_names):
+        values = [rmse_values[idx], mae_values[idx]]
+        ax.bar(
+            [pos + width * idx for pos in x],  # posición de las barras
+            values,
+            width,
+            label=model
+        )
 
-    # --- Prophet ---
-    df_prophet = df_copy[[date_col, value_col]].rename(columns={date_col: "ds", value_col: "y"})
-    prophet_model = Prophet()
-    prophet_model.fit(df_prophet)
-    future = prophet_model.make_future_dataframe(periods=0)
-    forecast = prophet_model.predict(future)
+    # Configurar etiquetas y título
+    ax.set_xlabel('Métricas')
+    ax.set_ylabel('Valor del Error')
+    ax.set_title(title)
+    ax.set_xticks([pos + width*(len(model_names)-1)/2 for pos in x])  # centrar ticks
+    ax.set_xticklabels(metric_labels)
+    ax.legend(title="Modelos")
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
 
-    prophet_mse = mean_squared_error(df_prophet['y'], forecast['yhat'])
-    prophet_rmse = prophet_mse ** 0.5
-    prophet_mae = mean_absolute_error(df_prophet['y'], forecast['yhat'])
-
-    best_model = "SARIMA" if sarima_mae < prophet_mae else "Prophet"
-
-    return {
-        "Dataset": title,
-        "SARIMA_RMSE": round(sarima_rmse, 2),
-        "SARIMA_MAE": round(sarima_mae, 2),
-        "Prophet_RMSE": round(prophet_rmse, 2),
-        "Prophet_MAE": round(prophet_mae, 2),
-        "Best_Model": best_model
-    }
+    plt.tight_layout()
+    plt.show()
