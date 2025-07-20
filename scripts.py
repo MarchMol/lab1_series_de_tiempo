@@ -60,21 +60,24 @@ def exploratory_analysis(df, value, title):
     from statsmodels.graphics.tsaplots import plot_acf, acf
 
     print("ACF plot")
-    plot_acf(df, lags=50)
+    plot_acf(df, lags=30)
     plt.show()
     
 # Graficas de Promedio Movil
-def moving_average(df, test, train, value, title):
-    print("Finding Best Period")
-    acf_values = acf(train, nlags=50)
+def moving_average(df, test, train, value, title, rec):
+    print("Finding Best Periodsss")
+    acf_values = acf(df, nlags=30)
     acf_values = acf_values[1:]
     max_idx = np.argmax(acf_values)
     print(f"Best Lag is {max_idx} with weight of {acf_values.max()}")  # Output: [0.523, 2]
     plt.figure(figsize=(13,5))
     plt.plot(train, '--', color="lightblue", label="Train Data")
     plt.plot(test, '--', color="pink", label="Validation Data")
-    rec_ma = df.rolling(window=max_idx).mean()
-    plt.plot(rec_ma, color='green', label=f"MA, window: {max_idx}")
+    best_ma =  df.rolling(window=max_idx).mean()
+    rec_ma = df.rolling(window=rec).mean()
+    
+    plt.plot(rec_ma, color='green', label=f"MA, window: {rec}")
+    plt.plot(best_ma, color='blue', label=f"MA, window: {max_idx}")
     plt.title(f"Moving Average - {title}")
     plt.ylabel(value)
     plt.xlabel("Date")
