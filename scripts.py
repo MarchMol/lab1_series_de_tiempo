@@ -158,18 +158,34 @@ def sarima_model(df, date_col, value_col, order=(1,1,1), seasonal_order=(1,1,1,1
             df.set_index(date_col, inplace=True)
         else:
             raise KeyError(f"'{date_col}' no está en las columnas ni es índice.")
-    
+    # Entrenar el modelo SARIMA con toda la serie
     model = SARIMAX(df[value_col], order=order, seasonal_order=seasonal_order)
     results = model.fit(disp=False)
-    df['forecast'] = results.predict(start=0, end=len(df)-1, dynamic=False)
-    
-    plt.figure(figsize=(10,5))
-    plt.plot(df[value_col], label='Original')
-    plt.plot(df['forecast'], color='red', label='SARIMA Forecast')
-    plt.title(f"SARIMA Model - {title}")
+    # Dividir datos para visualización
+    split_idx = int(len(df) * 0.7)
+    train = df.iloc[:split_idx]
+    test = df.iloc[split_idx:]
+    # Hacer predicción solo para el período de prueba
+    forecast = results.predict(start=split_idx, end=len(df)-1, dynamic=False)
+    # Calcular RMSE solo sobre el período de prueba
+    rmse = np.sqrt(mean_squared_error(test[value_col], forecast))
+    mae = mean_absolute_error(test[value_col], forecast)
+    # Graficar resultados
+    plt.figure(figsize=(15, 6))
+    plt.plot(train.index, train[value_col], label='Train', color='blue')
+    plt.plot(test.index, test[value_col], label='Test', color='green')
+    plt.plot(forecast.index, forecast, label=f"SARIMA{order}x{seasonal_order} (RMSE: {rmse:.2f})", color='red', linestyle='--')
+    plt.axvline(test.index[0], color='black', linestyle=':', linewidth=2, label='División Train/Test')  # Línea de división distinta
+
+    plt.title(f"SARIMA - {title}")
+    plt.xlabel("Fecha")
+    plt.ylabel(value_col)
     plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
     plt.show()
-    print(f"Model Summary:\n{results.summary()}")
+    print(f"Modelo SARIMA {order}x{seasonal_order} ajustado.")
+    print(f"RMSE: {rmse:.2f}, MAE: {mae:.2f}")
 
 # Función para aplicar Prophet
 def apply_prophet(df, date_col, value_col, title=""):
@@ -183,15 +199,35 @@ def apply_prophet(df, date_col, value_col, title=""):
     future = model.make_future_dataframe(periods=0)
     forecast = model.predict(future)
     
-    # Graficar
+    # Gráfica completa de Prophet
     fig1 = model.plot(forecast)
     plt.title(f"Prophet Forecast - {title}")
     plt.show()
-    
-    # Métricas
-    mse = mean_squared_error(df_prophet['y'], forecast['yhat'])
-    mae = mean_absolute_error(df_prophet['y'], forecast['yhat'])
-    print(f"{title} - Prophet MSE: {mse:.2f}, MAE: {mae:.2f}")
+
+    # División train/test para la gráfica tipo SARIMA
+    split_idx = int(len(df_prophet) * 0.7)
+    train = df_prophet.iloc[:split_idx]
+    test = df_prophet.iloc[split_idx:]
+    forecast_test = forecast.iloc[split_idx:]
+
+    # Calcular métricas
+    rmse = np.sqrt(mean_squared_error(test['y'], forecast_test['yhat']))
+    mae = mean_absolute_error(test['y'], forecast_test['yhat'])
+    # Gráfica tipo SARIMA
+    plt.figure(figsize=(15, 6))
+    plt.plot(train['ds'], train['y'], label='Train', color='blue')
+    plt.plot(test['ds'], test['y'], label='Test', color='green')
+    plt.plot(forecast_test['ds'], forecast_test['yhat'], label=f"Prophet (RMSE: {rmse:.2f}, MAE: {mae:.2f})", color='red', linestyle='--')
+    plt.fill_between(forecast_test['ds'], forecast_test['yhat_lower'], forecast_test['yhat_upper'], color='red', alpha=0.2, label='Intervalo de Confianza')
+    plt.axvline(test['ds'].iloc[0], color='black', linestyle=':', linewidth=2, label='División Train/Test')
+    plt.title(f"Prophet - {title}")
+    plt.xlabel("Fecha")
+    plt.ylabel(value_col)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+    print(f"{title} - Prophet RMSE: {rmse:.2f}, MAE: {mae:.2f}")
 
 # Función para comparar modelos SARIMA y Prophet usando RMSE y MAE
 def compare_models(df, date_col, value_col, sarima_order, sarima_seasonal_order, title):
