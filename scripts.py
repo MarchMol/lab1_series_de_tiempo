@@ -234,14 +234,20 @@ def apply_prophet(df, date_col, value_col, title=""):
 
 # Función para comparar modelos usando RMSE y MAE
 def plot_model_comparison(metrics_dict, title="Comparación de Modelos"):
-    # Preparar los datos
-    model_names = list(metrics_dict.keys())
-    rmse_values = [metrics_dict[model]["RMSE"] for model in model_names]
-    mae_values = [metrics_dict[model]["MAE"] for model in model_names]
+     # Preparar los datos y calcular el promedio RMSE+MAE para ordenar
+    sorted_models = sorted(
+        metrics_dict.items(),
+        key=lambda x: (x[1]['RMSE'] + x[1]['MAE']) / 2,
+        reverse=True
+    )
+    model_names = [model for model, _ in sorted_models]
+    rmse_values = [metrics['RMSE'] for _, metrics in sorted_models]
+    mae_values = [metrics['MAE'] for _, metrics in sorted_models]
 
     # Crear la figura
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    colors = ["#A1C9F4", "#FFB482", "#8DE5A1", "#FF9F9A", "#D0BBFF", "#FFE38E"]
     # Posiciones de las métricas en el eje X
     metric_labels = ["RMSE", "MAE"]
     x = range(len(metric_labels))
@@ -254,7 +260,8 @@ def plot_model_comparison(metrics_dict, title="Comparación de Modelos"):
             [pos + width * idx for pos in x],  # posición de las barras
             values,
             width,
-            label=model
+            label=model,
+            color=colors[idx % len(colors)]
         )
 
     # Configurar etiquetas y título
