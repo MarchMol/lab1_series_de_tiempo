@@ -112,7 +112,7 @@ def ses_graph(train, test, value, title):
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 def lineal_hw(train, test, value, title):
     len_ = len(test)
-    es_model = ExponentialSmoothing(train[value], trend='add')
+    es_model = ExponentialSmoothing(train[value], trend='mul')
     es_model = es_model.fit()
     y_pred = es_model.forecast(len_)
     plt.figure(figsize=(13,5))
